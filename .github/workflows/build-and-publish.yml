@@ -7,6 +7,7 @@ name: Create and publish a Docker image
 # action does not support the release event
 on:
   push:
+    branches: [ "main" ]
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
