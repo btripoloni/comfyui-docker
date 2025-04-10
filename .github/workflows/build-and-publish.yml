@@ -111,8 +111,8 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.docker-image-metadata.outputs.tags }}
-          labels: ${{ steps.docker-image-metadata.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
       # Generates an artifact attestation for the image, which is an unforgeable statement about where and how it was built; it increases supply chain
       # security for people who consume the image
