@@ -9,6 +9,7 @@ on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
 
 # Defines two custom environment variables for the host name of the registry (ghcr.io for the GitHub Container Registry) and the name of the image,
 # which is set to the name of the repository
