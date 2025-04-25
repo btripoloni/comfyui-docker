@@ -24,7 +24,7 @@ docker run \
     --publish 8188:8188 \
     --runtime nvidia \
     --gpus all \
-    ghcr.io/lecode-official/comfyui-docker:latest
+    ghcr.io/btripoloni/comfyui-docker:latest
 ```
 
 Please note, that the `<path/to/models/folder>` and `<path/to/custom/nodes/folder>` must be replaced with paths to directories on the host system where the models and custom nodes will be stored, e.g., `$HOME/.comfyui/models` and `$HOME/.comfyui/custom-nodes`, which can be created like so: `mkdir -p $HOME/.comfyui/{models,custom-nodes}`.
@@ -51,7 +51,7 @@ To update ComfyUI Docker to the latest version you have to first stop the runnin
 docker stop comfyui
 docker rm comfyui
 
-docker pull ghcr.io/lecode-official/comfyui-docker:latest
+docker pull ghcr.io/btripoloni/comfyui-docker:latest
 docker image prune # Optionally remove dangling images
 
 docker run \
@@ -65,7 +65,7 @@ docker run \
     --publish 8188:8188 \
     --runtime nvidia \
     --gpus all \
-    ghcr.io/lecode-official/comfyui-docker:latest
+    ghcr.io/btripoloni/comfyui-docker:latest
 ```
 
 ## Building
@@ -74,7 +74,7 @@ If you want to use the bleeding edge development version of the Docker image, yo
 
 ```shell
 git clone https://github.com/lecode-official/comfyui-docker.git
-docker build --tag lecode/comfyui-docker:latest comfyui-docker
+docker build --tag btripoloni/comfyui-docker:latest comfyui-docker
 ```
 
 Now, a container can be started like so:
@@ -91,9 +91,76 @@ docker run \
     --publish 8188:8188 \
     --runtime nvidia \
     --gpus all \
-    lecode/comfyui-docker:latest
+    btripoloni/comfyui-docker:latest
 ```
+
+## Using Docker Compose
+
+You can also use Docker Compose to manage the ComfyUI container. Below is an example `docker-compose.yml` file:
+
+```yaml
+version: '3.8'
+services:
+  comfyui:
+    image: ghcr.io/btripoloni/comfyui-docker:latest
+    container_name: comfyui
+    restart: unless-stopped
+    environment:
+      - USER_ID=${UID}
+      - GROUP_ID=${GID}
+    volumes:
+      - <path/to/models_folder>:/opt/comfyui/models:rw
+      - <path/to/custom_nodes_folder>:/opt/comfyui/custom_nodes:rw
+    ports:
+      - "8188:8188"
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+```
+
+Replace `<path/to/models_folder>` and `<path/to/custom_nodes_folder>` with the appropriate paths on your host system. To start the container, run:
+
+```shell
+docker-compose up -d
+```
+
+To stop the container, run:
+
+```shell
+docker-compose down
+```
+
+## New Features
+
+- **Versioning**: The container versions now reflect the versions of ComfyUI, making it easier to access specific versions.
+- **Command-line Arguments**: You can now pass arguments directly to ComfyUI from the command line. For example:
+
+```shell
+docker run \
+    --name comfyui \
+    --detach \
+    --restart unless-stopped \
+    --env USER_ID="$(id -u)" \
+    --env GROUP_ID="$(id -g)" \
+    --volume "<path/to/models/folder>:/opt/comfyui/models:rw" \
+    --volume "<path/to/custom/nodes/folder>:/opt/comfyui/custom_nodes:rw" \
+    --publish 8188:8188 \
+    --runtime nvidia \
+    --gpus all \
+    ghcr.io/btripoloni/comfyui-docker:latest --argument1 --argument2
+```
+
+Replace `--argument1 --argument2` with the desired arguments for ComfyUI.
 
 ## License
 
 The ComfyUI Docker image is licensed under the [MIT License](LICENSE). [ComfyUI](https://github.com/comfyanonymous/ComfyUI/blob/master/LICENSE) and the [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager/blob/main/LICENSE.txt) are both licensed under the GPL 3.0 license.
+
+### Credits
+
+This repository is based on the original work by [lecode-official/comfyui-docker](https://github.com/lecode-official/comfyui-docker).
