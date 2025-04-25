@@ -1,4 +1,3 @@
-
 # This image is based on the latest official PyTorch image, because it already contains CUDA, CuDNN, and PyTorch
 FROM pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
 
@@ -44,7 +43,11 @@ EXPOSE 8188
 ADD entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
 
+# Adds the forwarding script to the container
+ADD forward_args.sh /forward_args.sh
+RUN chmod +x /forward_args.sh
+
 # On startup, ComfyUI is started at its default port; the IP address is changed from localhost to 0.0.0.0, because Docker is only forwarding traffic
 # to the IP address it assigns to the container, which is unknown at build time; listening to 0.0.0.0 means that ComfyUI listens to all incoming
 # traffic; the auto-launch feature is disabled, because we do not want (nor is it possible) to open a browser window in a Docker container
-CMD ["/opt/conda/bin/python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--disable-auto-launch", "--preview-method", "auto"]
+CMD ["/bin/bash", "/forward_args.sh", "--listen", "0.0.0.0", "--port", "8188", "--disable-auto-launch", "--preview-method", "auto"]
