@@ -68,14 +68,6 @@ jobs:
             echo "new_version=true" >> $GITHUB_ENV
           fi
 
-      # Step: Validate versions
-      - name: Validate versions
-        run: |
-          if [[ -z "$LATEST_COMFYUI_VERSION" || -z "$LATEST_COMFYUI_MANAGER_VERSION" ]]; then
-            echo "Error: Unable to fetch the latest versions."
-            exit 1
-          fi
-
       # Skips the workflow if there is no new version
       - name: Skip build if no new version
         if: ${{ env.new_version == 'false' }}
