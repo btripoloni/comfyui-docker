@@ -42,12 +42,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Checks if there is a new version of ComfyUI
-      # Step: Check for new ComfyUI version
-      - name: Check for new ComfyUI version
-        id: check-version
+      # Combines steps to check for new versions, skip build if no new version, and fetch latest versions
+      - name: Check and Fetch Latest Versions
+        id: check-and-fetch-versions
         run: |
-          set -e
           echo "Fetching latest ComfyUI version..."
           LATEST_COMFYUI_VERSION=$(git ls-remote --tags https://github.com/comfyanonymous/ComfyUI.git | awk -F'/' '{print $NF}' | sort -V | tail -n1 || true)
           echo "Fetching latest ComfyUI-Manager version..."
@@ -63,31 +61,12 @@ jobs:
           echo "Current ComfyUI version in Dockerfile: $CURRENT_COMFYUI_VERSION"
 
           if [ "$LATEST_COMFYUI_VERSION" = "$CURRENT_COMFYUI_VERSION" ]; then
-            echo "new_version=false" >> $GITHUB_ENV
-          else
-            echo "new_version=true" >> $GITHUB_ENV
+            echo "No new version available. Skipping build."
+            exit 0
           fi
 
-      # Skips the workflow if there is no new version
-      - name: Skip build if no new version
-        if: ${{ env.new_version == 'false' }}
-        run: exit 0
-
-      # Fetches the latest tags for ComfyUI and ComfyUI Manager and updates the Dockerfile
-      - name: Update Dockerfile with latest versions
-        if: ${{ env.new_version == 'true' }}
-        run: |
-          # Get the latest tags
-          COMFYUI_LATEST_TAG=$(git ls-remote --tags https://github.com/comfyanonymous/ComfyUI.git | awk -F'/' '{print $NF}' | sort -V | tail -n1)
-          COMFYUI_MANAGER_LATEST_TAG=$(git ls-remote --tags https://github.com/ltdrdata/ComfyUI-Manager.git | awk -F'/' '{print $NF}' | sort -V | tail -n1)
-
-          # Update the Dockerfile in a single pass
-          sed -i -E "s|(git checkout tags/)[^ ]+|\1$COMFYUI_LATEST_TAG|g; s|(git checkout tags/)[^ ]+|\1$COMFYUI_MANAGER_LATEST_TAG|g" Dockerfile
-
-          # Commit the changes if the Dockerfile was updated
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git diff --quiet || git commit -am "Update ComfyUI and ComfyUI Manager to latest versions"
+          echo "COMFYUI_TAG=$LATEST_COMFYUI_VERSION" >> $GITHUB_ENV
+          echo "COMFYUI_MANAGER_TAG=$LATEST_COMFYUI_MANAGER_VERSION" >> $GITHUB_ENV
 
       # Logs in to the GitHub Container Registry using the account of the user that triggered the workflow run and the GitHub token that is
       # an automatically generated secret that is usually only used to access the repository (the permissions defined above allow the token to also
@@ -129,6 +108,9 @@ jobs:
           push: true
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           cache-to: type=inline
+          build-args: |
+            COMFYUI_TAG=${{ env.COMFYUI_TAG }}
+            COMFYUI_MANAGER_TAG=${{ env.COMFYUI_MANAGER_TAG }}
           tags: ${{ steps.docker-image-metadata.outputs.tags }}
           labels: ${{ steps.docker-image-metadata.outputs.labels }}
 

@@ -10,12 +10,16 @@ RUN apt update --assume-yes && \
         libglib2.0-0 && \
     rm -rf /var/lib/apt/lists/*
 
-# Clones the ComfyUI repository and checks out the latest release
+# Define environment variables for the tags
+ENV COMFYUI_TAG=v0.3.27
+ENV COMFYUI_MANAGER_TAG=3.31.8
+
+# Clones the ComfyUI repository and checks out the specified tag
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /opt/comfyui && \
     cd /opt/comfyui && \
-    git checkout tags/v0.3.27
+    git checkout tags/$COMFYUI_TAG
 
-# Clones the ComfyUI Manager repository and checks out the latest release; ComfyUI Manager is an extension for ComfyUI that enables users to install
+# Clones the ComfyUI Manager repository and checks out the specified tag; ComfyUI Manager is an extension for ComfyUI that enables users to install
 # custom nodes and download models directly from the ComfyUI interface; instead of installing it to "/opt/comfyui/custom_nodes/ComfyUI-Manager", which
 # is the directory it is meant to be installed in, it is installed to its own directory; the entrypoint will symlink the directory to the correct
 # location upon startup; the reason for this is that the ComfyUI Manager must be installed in the same directory that it installs custom nodes to, but
@@ -23,7 +27,7 @@ RUN git clone https://github.com/comfyanonymous/ComfyUI.git /opt/comfyui && \
 # removed; this way, the custom nodes are installed on the host machine
 RUN git clone https://github.com/ltdrdata/ComfyUI-Manager.git /opt/comfyui-manager && \
     cd /opt/comfyui-manager && \
-    git checkout tags/3.31.8
+    git checkout tags/$COMFYUI_MANAGER_TAG
 
 # Installs the required Python packages for both ComfyUI and the ComfyUI Manager
 RUN pip install \
