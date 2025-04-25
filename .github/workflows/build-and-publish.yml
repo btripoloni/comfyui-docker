@@ -1,16 +1,14 @@
-
-# A workflow, which builds the ComfyUI Docker image and publishes it to the GitHub Container Registry
+# Workflow configuration
 name: Create and publish a Docker image
 
-# Configures this workflow to run when a tag was pushed to the repository that matches the pattern "v[0-9]+.[0-9]+.[0-9]+", which is a semantic
-# versioning pattern; this token will be created when a new release is created; the release event cannot be used, because the docker/metadata-action
-# action does not support the release event
 on:
   push:
     branches: [ "main" ]
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # Runs daily at midnight (UTC)
 
 # Defines two custom environment variables for the host name of the registry (ghcr.io for the GitHub Container Registry) and the name of the image,
 # which is set to the name of the repository
@@ -21,15 +19,17 @@ env:
 # This workflow has a single job, which builds the Docker image and publishes it to the GitHub Container Registry
 jobs:
 
-  # The `build-and-publish` builds the Docker image, and publishes it to the GitHub Container Registry
+  # The `build-and-publish` job builds the Docker image and publishes it to the GitHub Container Registry
   build-and-publish:
 
-    # This job will run on an Ubuntu GitHub runner, which is a good default choice and it comes with Docker pre-installed
+    # This job is only run if the workflow was triggered by a tag push or manually; it is not run if the workflow was triggered by a pull request
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    # The job is run on the latest version of Ubuntu; this is the environment in which the job will be run
     runs-on: ubuntu-latest
 
     # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job
     permissions:
-      contents: read
+      contents: write
       packages: write
       attestations: write
       id-token: write
@@ -42,13 +42,52 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Installs Python, which is used to extract the version of ComfyUI and the ComfyUI Manager from the Dockerfile using a regular expression
-      - name: Install Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
+      # Checks if there is a new version of ComfyUI
+      - name: Check for new ComfyUI version
+        id: check-version
+        run: |
+          LATEST_COMFYUI_VERSION=$(git ls-remote --tags https://github.com/comfyanonymous/ComfyUI.git | awk -F'/' '{print $NF}' | sort -V | tail -n1)
+          CURRENT_COMFYUI_VERSION=$(grep -oP 'git checkout tags/\K[^ ]+' Dockerfile)
 
-      # Logs in to the GitHub Container Registry registry using the account of the user that triggered the workflow run and the GitHub token that is
+          echo "Latest ComfyUI version: $LATEST_COMFYUI_VERSION"
+          echo "Current version in Dockerfile: $CURRENT_COMFYUI_VERSION"
+
+          if [ "$LATEST_COMFYUI_VERSION" = "$CURRENT_COMFYUI_VERSION" ]; then
+            echo "new_version=false" >> $GITHUB_ENV
+          else
+            echo "new_version=true" >> $GITHUB_ENV
+          fi
+
+      # Skips the workflow if there is no new version
+      - name: Skip build if no new version
+        if: ${{ env.new_version == 'false' }}
+        run: exit 0
+
+      # Fetches the latest tags for ComfyUI and ComfyUI Manager and updates the Dockerfile
+      - name: Update Dockerfile with latest versions
+        if: ${{ env.new_version == 'true' }}
+        run: |
+          # Get the latest tags
+          COMFYUI_LATEST_TAG=$(git ls-remote --tags https://github.com/comfyanonymous/ComfyUI.git | awk -F'/' '{print $NF}' | sort -V | tail -n1)
+          COMFYUI_MANAGER_LATEST_TAG=$(git ls-remote --tags https://github.com/ltdrdata/ComfyUI-Manager.git | awk -F'/' '{print $NF}' | sort -V | tail -n1)
+
+          # Update the Dockerfile in a single pass
+          sed -i -E "s|(git checkout tags/)[^ ]+|\1$COMFYUI_LATEST_TAG|g; s|(git checkout tags/)[^ ]+|\1$COMFYUI_MANAGER_LATEST_TAG|g" Dockerfile
+
+          # Commit the changes if the Dockerfile was updated
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet || git commit -am "Update ComfyUI and ComfyUI Manager to latest versions"
+
+      # Validates the versions
+      - name: Validate versions
+        run: |
+          if [[ -z "$LATEST_COMFYUI_VERSION" || -z "$LATEST_COMFYUI_MANAGER_VERSION" ]]; then
+            echo "Error: Unable to fetch the latest versions."
+            exit 1
+          fi
+
+      # Logs in to the GitHub Container Registry using the account of the user that triggered the workflow run and the GitHub token that is
       # an automatically generated secret that is usually only used to access the repository (the permissions defined above allow the token to also
       # publish Docker images to the GitHub Container Registry) that will publish the packages. Once published, the packages are scoped to the account defined here.
       - name: Log in to the GitHub Container Registry
@@ -58,30 +97,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Extracts the versions of ComfyUI and the ComfyUI Manager from the Dockerfile using a Python script; the versions are written to the output
-      # file, which are available in subsequent steps under steps.versions.outputs.COMFYUI_VERSION and steps.versions.outputs.COMFYUI_MANAGER_VERSION;
-      # the versions are used to tag the Docker image, so that users know which versions of ComfyUI and the ComfyUI Manager are included in the image
-      - name: Extract ComfyUI & ComfyUI Manager Versions
-        id: versions
-        shell: python
-        run: |
-          import os
-          import re
-
-          def get_version(repository_name: str) -> str:
-            with open('Dockerfile', mode='r', encoding='utf-8') as dockerfile:
-                matches = re.findall(
-                  rf'git clone [a-zA-Z0-9:\/\.]+\/{repository_name}\.git[a-zA-Z0-9\-\/&\\\n ]+git checkout tags\/v?([0-9\.]+)',
-                  dockerfile.read(),
-                  re.MULTILINE
-                )
-                return matches[0] if matches else 'unknown'
-
-          with open(os.environ['GITHUB_OUTPUT'], mode='a', encoding='utf-8') as output_file:
-            output_file.write(f'COMFYUI_VERSION={get_version('ComfyUI')}\n')
-            output_file.write(f'COMFYUI_MANAGER_VERSION={get_version('ComfyUI-Manager')}\n')
-
-      # Extracts metadata from the Git repository and GitHub, which are then used to label and tag the Docker image that will be build in the next
+      # Extracts metadata from the Git repository and GitHub, which are then used to label and tag the Docker image that will be built in the next
       # step; the "id" property specifies that the output of this step will be available in subsequent steps under the name "metadata"; tags for the
       # SHA of the commit, the full semantic version extracted from the current tag (e.g., tag "v1.2.3" will be extracted as "1.2.3"), and the major
       # and minor version extracted from the current version (e.g., tag "v1.2.3" will be extracted as "1.2"), as well as a "latest" tag are added;
@@ -93,11 +109,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=sha
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{version}}
+            type=raw,value=${{ steps.versions.outputs.COMFYUI_VERSION }}
             type=semver,pattern={{version}}-comfyui-${{ steps.versions.outputs.COMFYUI_VERSION }}
-            type=semver,pattern={{version}}-comfyui-${{ steps.versions.outputs.COMFYUI_VERSION }}-comfyui-manager-${{ steps.versions.outputs.COMFYUI_MANAGER_VERSION }}
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
             org.opencontainers.image.title=ComfyUI Docker
@@ -112,6 +125,8 @@ jobs:
         with:
           context: .
           push: true
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-to: type=inline
           tags: ${{ steps.docker-image-metadata.outputs.tags }}
           labels: ${{ steps.docker-image-metadata.outputs.labels }}
 
@@ -122,4 +137,3 @@ jobs:
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.build-and-push-docker-image.outputs.digest }}
-          push-to-registry: true
