@@ -3,13 +3,16 @@ import sys
 
 def get_latest_tag(repo):
     url = f"https://api.github.com/repos/{repo}/tags"
-    r = requests.get(url, timeout=10)
-    r.raise_for_status()
-    tags = r.json()
-    if not tags:
-        print(f"No tags found for {repo}", file=sys.stderr)
+    try:
+        r = requests.get(url, timeout=10)
+        r.raise_for_status()
+        tags = r.json()
+        if not tags:
+            raise ValueError(f"No tags found for {repo}")
+        return tags[0]['name']
+    except Exception as e:
+        print(f"Error fetching tags for {repo}: {e}", file=sys.stderr)
         sys.exit(1)
-    return tags[0]['name']
 
 if __name__ == "__main__":
     comfyui_repo = "comfyanonymous/ComfyUI"
