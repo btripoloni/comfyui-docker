@@ -1,0 +1,50 @@
+name: Auto Update Dockerfile
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # Runs daily at 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install requirements
+        run: pip install requests packaging
+
+      - name: Get latest ComfyUI and ComfyUI-Manager tags
+        id: get_tags
+        run: |
+          python .github/scripts/get_latest_versions.py > versions.txt
+          cat versions.txt
+
+      - name: Compare and update Dockerfile if needed
+        id: update_dockerfile
+        run: |
+          python .github/scripts/update_dockerfile.py versions.txt Dockerfile
+
+      - name: Commit and push changes
+        if: steps.update_dockerfile.outputs.updated == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Dockerfile
+          git commit -m "chore: update Dockerfile to ComfyUI ${{ steps.get_tags.outputs.comfyui_version }} and ComfyUI-Manager ${{ steps.get_tags.outputs.manager_version }}"
+          git push
+
+      - name: Create and push tag
+        if: steps.update_dockerfile.outputs.updated == 'true'
+        run: |
+          TAG="${{ steps.get_tags.outputs.comfyui_version }}-${{ steps.get_tags.outputs.manager_version }}"
+          git tag $TAG
+          git push origin $TAG
