@@ -27,6 +27,16 @@ jobs:
         run: |
           python .github/scripts/get_latest_versions.py > versions.txt
           cat versions.txt
+          source versions.txt
+          echo "comfyui_version=$COMFYUI_VERSION" >> $GITHUB_OUTPUT
+          echo "manager_version=$MANAGER_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Validate tag versions
+        run: |
+          if [[ -z "${{ steps.get_tags.outputs.comfyui_version }}" || -z "${{ steps.get_tags.outputs.manager_version }}" ]]; then
+            echo "Error: One or more tag versions are empty."
+            exit 1
+          fi
 
       - name: Compare and update Dockerfile if needed
         id: update_dockerfile
