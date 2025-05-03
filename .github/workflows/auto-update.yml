@@ -58,3 +58,14 @@ jobs:
           TAG="${{ steps.get_tags.outputs.comfyui_version }}-${{ steps.get_tags.outputs.manager_version }}"
           git tag $TAG
           git push origin $TAG
+
+      - name: Create GitHub Release
+        if: steps.update_dockerfile.outputs.updated == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_tags.outputs.comfyui_version }}-${{ steps.get_tags.outputs.manager_version }}
+          name: Release ${{ steps.get_tags.outputs.comfyui_version }}-${{ steps.get_tags.outputs.manager_version }}
+          body: |
+            Automated release for ComfyUI ${{ steps.get_tags.outputs.comfyui_version }} and ComfyUI-Manager ${{ steps.get_tags.outputs.manager_version }}.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

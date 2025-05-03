@@ -2,9 +2,8 @@
 name: Create and publish a Docker image
 
 on:
-  push:
-    tags:
-      - '*'
+  release:
+    types: [published]
   workflow_dispatch:
 
 # Defines two custom environment variables for the host name of the registry (ghcr.io for the GitHub Container Registry) and the name of the image,
@@ -72,7 +71,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ env.COMFYUI_TAG }}-${{ env.COMFYUI_MANAGER_TAG }}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest
           labels: |
             org.opencontainers.image.title=ComfyUI
             org.opencontainers.image.authors=Bruno Tripoloni <bruno.tripoloni@proton.me>
