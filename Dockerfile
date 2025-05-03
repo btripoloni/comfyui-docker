@@ -7,7 +7,8 @@ RUN apt update --assume-yes && \
         git \
         sudo \
         libgl1-mesa-glx \
-        libglib2.0-0 && \
+        libglib2.0-0 \
+        build-essential && \
     rm -rf /var/lib/apt/lists/*
 
 # Define environment variables for the tags
