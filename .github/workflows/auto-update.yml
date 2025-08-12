@@ -69,3 +69,19 @@ jobs:
             Automated release for ComfyUI ${{ steps.get_tags.outputs.comfyui_version }} and ComfyUI-Manager ${{ steps.get_tags.outputs.manager_version }}.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        if: steps.update_dockerfile.outputs.updated == 'true'
+        run: |
+          docker build -t comfyui-auto-update:${{ steps.get_tags.outputs.comfyui_version }}-${{ steps.get_tags.outputs.manager_version }} .
+      - name: Publish Docker image to registry
+        if: steps.update_dockerfile.outputs.updated == 'true'
+        env:
+          REGISTRY: ghcr.io
+          IMAGE_NAME: ${{ github.repository }}
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login $REGISTRY -u ${{ github.actor }} --password-stdin
+          docker tag comfyui-auto-update:${{ steps.get_tags.outputs.comfyui_version }}-${{ steps.get_tags.outputs.manager_version }} $REGISTRY/${{ env.IMAGE_NAME }}:${{ steps.get_tags.outputs.comfyui_version }}-${{ steps.get_tags.outputs.manager_version }}
+          docker tag comfyui-auto-update:${{ steps.get_tags.outputs.comfyui_version }}-${{ steps.get_tags.outputs.manager_version }} $REGISTRY/${{ env.IMAGE_NAME }}:latest
+          docker push $REGISTRY/${{ env.IMAGE_NAME }}:${{ steps.get_tags.outputs.comfyui_version }}-${{ steps.get_tags.outputs.manager_version }}
+          docker push $REGISTRY/${{ env.IMAGE_NAME }}:latest
