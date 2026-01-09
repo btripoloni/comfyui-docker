@@ -12,8 +12,8 @@ RUN apt update --assume-yes && \
     rm -rf /var/lib/apt/lists/*
 
 # Define environment variables for the tags
-ENV COMFYUI_TAG=v0.8.1
-ENV COMFYUI_MANAGER_TAG=4.0.4
+ENV COMFYUI_TAG=v0.8.2
+ENV COMFYUI_MANAGER_TAG=4.0.5
 
 # Clones the ComfyUI repository and checks out the specified tag
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /opt/comfyui && \
