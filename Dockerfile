@@ -16,7 +16,7 @@ ENV COMFYUI_TAG=v0.12.2
 ENV COMFYUI_MANAGER_TAG=4.1b1
 
 # Clones the ComfyUI repository and checks out the specified tag
-RUN git clone https://github.com/comfyanonymous/ComfyUI.git /opt/comfyui && \
+RUN git clone https://github.com/Comfy-Org/ComfyUI.git /opt/comfyui && \
     cd /opt/comfyui && \
     git checkout tags/$COMFYUI_TAG
 
@@ -26,7 +26,7 @@ RUN git clone https://github.com/comfyanonymous/ComfyUI.git /opt/comfyui && \
 # location upon startup; the reason for this is that the ComfyUI Manager must be installed in the same directory that it installs custom nodes to, but
 # this directory is mounted as a volume, so that the custom nodes are not installed inside of the container and are not lost when the container is
 # removed; this way, the custom nodes are installed on the host machine
-RUN git clone https://github.com/ltdrdata/ComfyUI-Manager.git /opt/comfyui-manager && \
+RUN git clone https://github.com/Comfy-Org/ComfyUI-Manager.git /opt/comfyui-manager && \
     cd /opt/comfyui-manager && \
     git checkout tags/$COMFYUI_MANAGER_TAG
 
