@@ -16,7 +16,7 @@ def get_latest_tag(repo):
 
 if __name__ == "__main__":
     comfyui_repo = "comfyanonymous/ComfyUI"
-    manager_repo = "ltdrdata/ComfyUI-Manager"
+    manager_repo = "Comfy-Org/ComfyUI-Manager"
     comfyui_version = get_latest_tag(comfyui_repo)
     manager_version = get_latest_tag(manager_repo)
     print(f"COMFYUI_VERSION={comfyui_version}")
