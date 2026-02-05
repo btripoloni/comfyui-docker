@@ -15,7 +15,7 @@ def get_latest_tag(repo):
         sys.exit(1)
 
 if __name__ == "__main__":
-    comfyui_repo = "comfyanonymous/ComfyUI"
+    comfyui_repo = "Comfy-Org/ComfyUI"
     manager_repo = "Comfy-Org/ComfyUI-Manager"
     comfyui_version = get_latest_tag(comfyui_repo)
     manager_version = get_latest_tag(manager_repo)
